@@ -1,5 +1,3 @@
-const readline = require("readline");
-
 const songs = [
     "Blinding Lights - The Weeknd",
     "Starboy - The Weeknd",
@@ -8,45 +6,131 @@ const songs = [
     "Perfect - Ed Sheeran"
 ];
 
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+let currentSong = 0;
+let isPlaying = false;
 
 
-function displaySongs() {
+// Display the player
+function displayPlayer() {
+    console.clear();
+
     console.log("==============================");
     console.log("       🎵 MUSIC PLAYER");
     console.log("==============================\n");
 
-    console.log("Songs:");
-
     songs.forEach((song, index) => {
-        console.log(`${index + 1}. ${song}`);
-    });
-}
-
-
-function selectSong() {
-    rl.question("\nEnter song number: ", (answer) => {
-
-        const choice = Number(answer);
-
-        if (choice >= 1 && choice <= songs.length) {
-            console.log(`\n▶ Now Playing: ${songs[choice - 1]}`);
+        if (index === currentSong) {
+            console.log(`  > ${song}`);
         } else {
-            console.log("\n❌ Invalid song number. Please choose another one");
+            console.log(`    ${song}`);
         }
-
-        rl.close();
     });
+
+    console.log("\n------------------------------");
+
+    if (isPlaying) {
+        console.log(`▶ Playing: ${songs[currentSong]}`);
+    } else {
+        console.log(`⏸ Paused: ${songs[currentSong]}`);
+    }
+
+    console.log("\n↑ ↓ Navigate");
+    console.log("ENTER Select / Play");
+    console.log("SPACE Pause / Resume");
+    console.log("Q Quit");
 }
 
 
+// Move to next song
+function nextSong() {
+    currentSong++;
+
+    if (currentSong >= songs.length) {
+        currentSong = 0;
+    }
+
+    isPlaying = false;
+    displayPlayer();
+}
+
+
+// Move to previous song
+function previousSong() {
+    currentSong--;
+
+    if (currentSong < 0) {
+        currentSong = songs.length - 1;
+    }
+
+    isPlaying = false;
+    displayPlayer();
+}
+
+
+// Play / resume
+function playSong() {
+    isPlaying = true;
+    displayPlayer();
+}
+
+
+// Pause
+function pauseSong() {
+    isPlaying = false;
+    displayPlayer();
+}
+
+
+// Handle keyboard input
+function handleInput(key) {
+
+    // Arrow Up
+    if (key === "\u001b[A") {
+        previousSong();
+    }
+
+    // Arrow Down
+    else if (key === "\u001b[B") {
+        nextSong();
+    }
+
+    // Enter
+    else if (key === "\r") {
+        playSong();
+    }
+
+    // Space
+    else if (key === " ") {
+        if (isPlaying) {
+            pauseSong();
+        } else {
+            playSong();
+        }
+    }
+
+    // Q
+    else if (key.toLowerCase() === "q") {
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+
+        console.clear();
+        console.log("👋 Goodbye!");
+
+        process.exit();
+    }
+}
+
+
+// Start player
 function main() {
-    displaySongs();
-    selectSong();
+
+    displayPlayer();
+
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding("utf8");
+
+    process.stdin.on("data", handleInput);
 }
 
 
