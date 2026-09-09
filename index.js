@@ -9,6 +9,30 @@ const songs = [
 let currentSong = 0;
 let isPlaying = false;
 
+let currentTime = 0;
+let duration = 180; // dummy duration: 3 minutes
+let progressInterval;
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function getProgressBar() {
+    const barLength = 30;
+
+    const progress = currentTime / duration;
+    const filled = Math.floor(progress * barLength);
+
+    const bar =
+        "█".repeat(filled) +
+        "░".repeat(barLength - filled);
+
+    return bar;
+}
+
 
 // Display the player
 function displayPlayer() {
@@ -34,12 +58,15 @@ function displayPlayer() {
         console.log(`⏸ Paused: ${songs[currentSong]}`);
     }
 
+    console.log(
+        `\n${getProgressBar()} ${formatTime(currentTime)} / ${formatTime(duration)}`
+    );
+
     console.log("\n↑ ↓ Navigate");
     console.log("ENTER Select / Play");
     console.log("SPACE Pause / Resume");
     console.log("Q Quit");
 }
-
 
 // Move to next song
 function nextSong() {
@@ -49,7 +76,9 @@ function nextSong() {
         currentSong = 0;
     }
 
+    currentTime = 0;
     isPlaying = false;
+
     displayPlayer();
 }
 
@@ -62,7 +91,9 @@ function previousSong() {
         currentSong = songs.length - 1;
     }
 
+    currentTime = 0;
     isPlaying = false;
+
     displayPlayer();
 }
 
@@ -70,6 +101,9 @@ function previousSong() {
 // Play / resume
 function playSong() {
     isPlaying = true;
+
+    startProgress();
+
     displayPlayer();
 }
 
@@ -118,6 +152,27 @@ function handleInput(key) {
 
         process.exit();
     }
+}
+function startProgress() {
+    clearInterval(progressInterval);
+
+    progressInterval = setInterval(() => {
+
+        if (!isPlaying) {
+            return;
+        }
+
+        currentTime++;
+
+        if (currentTime >= duration) {
+            currentTime = duration;
+            isPlaying = false;
+            clearInterval(progressInterval);
+        }
+
+        displayPlayer();
+
+    }, 1000);
 }
 
 
