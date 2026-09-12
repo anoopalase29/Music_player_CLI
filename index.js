@@ -1,40 +1,17 @@
-const songs = [
-    "Blinding Lights - The Weeknd",
-    "Starboy - The Weeknd",
-    "Shape of You - Ed Sheeran",
-    "Believer - Imagine Dragons",
-    "Perfect - Ed Sheeran"
-];
+const fs = require("fs");
+const path = require("path");
+const player = require("play-sound")();
+
+const songsFolder = path.join(__dirname, "mysongs");
+
+const songs = fs.readdirSync(songsFolder);
 
 let currentSong = 0;
 let isPlaying = false;
-
-let currentTime = 0;
-let duration = 180; // dummy duration: 3 minutes
-let progressInterval;
-
-function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-}
-
-function getProgressBar() {
-    const barLength = 30;
-
-    const progress = currentTime / duration;
-    const filled = Math.floor(progress * barLength);
-
-    const bar =
-        "█".repeat(filled) +
-        "░".repeat(barLength - filled);
-
-    return bar;
-}
+let audioProcess = null;
 
 
-// Display the player
+// Display player
 function displayPlayer() {
     console.clear();
 
@@ -43,11 +20,13 @@ function displayPlayer() {
     console.log("==============================\n");
 
     songs.forEach((song, index) => {
+
         if (index === currentSong) {
             console.log(`  > ${song}`);
         } else {
             console.log(`    ${song}`);
         }
+
     });
 
     console.log("\n------------------------------");
@@ -58,51 +37,42 @@ function displayPlayer() {
         console.log(`⏸ Paused: ${songs[currentSong]}`);
     }
 
-    console.log(
-        `\n${getProgressBar()} ${formatTime(currentTime)} / ${formatTime(duration)}`
-    );
-
     console.log("\n↑ ↓ Navigate");
     console.log("ENTER Select / Play");
     console.log("SPACE Pause / Resume");
     console.log("Q Quit");
 }
 
-// Move to next song
-function nextSong() {
-    currentSong++;
 
-    if (currentSong >= songs.length) {
-        currentSong = 0;
-    }
-
-    currentTime = 0;
-    isPlaying = false;
-
-    displayPlayer();
-}
-
-
-// Move to previous song
-function previousSong() {
-    currentSong--;
-
-    if (currentSong < 0) {
-        currentSong = songs.length - 1;
-    }
-
-    currentTime = 0;
-    isPlaying = false;
-
-    displayPlayer();
-}
-
-
-// Play / resume
+// Play / Resume
 function playSong() {
-    isPlaying = true;
 
-    startProgress();
+    // Resume existing song
+    if (audioProcess) {
+        audioProcess.kill("SIGCONT");
+        isPlaying = true;
+        displayPlayer();
+        return;
+    }
+
+    // Get selected song
+    const songPath = path.join(
+        songsFolder,
+        songs[currentSong]
+    );
+
+    // Play song
+    audioProcess = player.play(songPath, (error) => {
+
+        if (error) {
+            console.log("Error playing song:", error);
+        }
+
+        audioProcess = null;
+        isPlaying = false;
+    });
+
+    isPlaying = true;
 
     displayPlayer();
 }
@@ -110,20 +80,64 @@ function playSong() {
 
 // Pause
 function pauseSong() {
+
+    if (audioProcess) {
+        audioProcess.kill("SIGSTOP");
+        isPlaying = false;
+        displayPlayer();
+    }
+}
+
+
+// Next song
+function nextSong() {
+
+    if (audioProcess) {
+        audioProcess.kill();
+        audioProcess = null;
+    }
+
+    currentSong++;
+
+    if (currentSong >= songs.length) {
+        currentSong = 0;
+    }
+
     isPlaying = false;
+
     displayPlayer();
 }
 
 
-// Handle keyboard input
+// Previous song
+function previousSong() {
+
+    if (audioProcess) {
+        audioProcess.kill();
+        audioProcess = null;
+    }
+
+    currentSong--;
+
+    if (currentSong < 0) {
+        currentSong = songs.length - 1;
+    }
+
+    isPlaying = false;
+
+    displayPlayer();
+}
+
+
+// Keyboard input
 function handleInput(key) {
 
-    // Arrow Up
+    // Up
     if (key === "\u001b[A") {
         previousSong();
     }
 
-    // Arrow Down
+    // Down
     else if (key === "\u001b[B") {
         nextSong();
     }
@@ -135,15 +149,22 @@ function handleInput(key) {
 
     // Space
     else if (key === " ") {
+
         if (isPlaying) {
             pauseSong();
         } else {
             playSong();
         }
+
     }
 
-    // Q
+    // Quit
     else if (key.toLowerCase() === "q") {
+
+        if (audioProcess) {
+            audioProcess.kill();
+        }
+
         process.stdin.setRawMode(false);
         process.stdin.pause();
 
@@ -152,27 +173,6 @@ function handleInput(key) {
 
         process.exit();
     }
-}
-function startProgress() {
-    clearInterval(progressInterval);
-
-    progressInterval = setInterval(() => {
-
-        if (!isPlaying) {
-            return;
-        }
-
-        currentTime++;
-
-        if (currentTime >= duration) {
-            currentTime = duration;
-            isPlaying = false;
-            clearInterval(progressInterval);
-        }
-
-        displayPlayer();
-
-    }, 1000);
 }
 
 
@@ -187,6 +187,5 @@ function main() {
 
     process.stdin.on("data", handleInput);
 }
-
 
 main();
